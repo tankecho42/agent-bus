@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Credentials
+**/credentials*
+**/.master_key
+.env
+agent_bus_credentials.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Virtual env
+venv/
+.venv/
