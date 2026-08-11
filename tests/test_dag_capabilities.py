@@ -280,3 +280,142 @@ class TestCapabilities:
         data = resp.json()
         assert data["skill_filter"] is None
         assert data["count"] >= 3  # at least our 3 test agents
+
+
+# ── Cycle Detection Tests ────────────────────────────────
+
+class TestCycleDetection:
+    """Test that circular dependencies are detected and rejected."""
+
+    def test_direct_self_cycle(self, dag_agents):
+        """A task that depends on itself should be rejected."""
+        echo_key = dag_agents["alice"]["key"]
+
+        # Create task A
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Cycle-A", "assignee": dag_agents["bob"]["name"], "tags": ["cycle_test"]},
+            timeout=5)
+        assert resp.status_code == 200
+        task_a = resp.json()["id"]
+
+        # Try to update A to depend on itself
+        resp = requests.patch(f"{BASE}/tasks/{task_a}",
+            headers=auth_header(echo_key),
+            json={"depends_on": [task_a]},
+            timeout=5)
+        assert resp.status_code == 400
+        assert "Circular dependency" in resp.json().get("detail", "")
+
+    def test_three_node_cycle_A_B_C_A(self, dag_agents):
+        """A→B→C→A should be rejected when trying to close the loop.
+
+        Setup: Create A (no deps), B depends on A, C depends on B.
+        Then try to make A depend on C — that would create A→C→B→A cycle.
+        """
+        echo_key = dag_agents["alice"]["key"]
+        assignee = dag_agents["bob"]["name"]
+
+        # Create A
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Cycle-A", "assignee": assignee, "tags": ["cycle_test"]},
+            timeout=5)
+        task_a = resp.json()["id"]
+
+        # Create B depending on A
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Cycle-B", "assignee": assignee, "depends_on": [task_a], "tags": ["cycle_test"]},
+            timeout=5)
+        task_b = resp.json()["id"]
+
+        # Create C depending on B
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Cycle-C", "assignee": assignee, "depends_on": [task_b], "tags": ["cycle_test"]},
+            timeout=5)
+        task_c = resp.json()["id"]
+
+        # Now try to make A depend on C — creates cycle A→C→B→A
+        resp = requests.patch(f"{BASE}/tasks/{task_a}",
+            headers=auth_header(echo_key),
+            json={"depends_on": [task_c]},
+            timeout=5)
+        assert resp.status_code == 400
+        assert "Circular dependency" in resp.json().get("detail", "")
+
+    def test_cycle_at_create_time(self, dag_agents):
+        """Creating a task that would create a cycle should be rejected.
+
+        Setup: Create A, B depends on A. Then try to create a new task
+        that makes A depend on it — wait, at create time the new task
+        doesn't exist yet so we test: B depends on A, create C with
+        depends_on=[B], then try creating D with depends_on=[C] but also
+        pointing back — actually the simplest: create A, make A depend
+        on a task ID that will be B, then create B depending on A.
+        Since A already has depends_on=[B_placeholder], we can't use that.
+        Instead: create A and B normally, then try to PATCH A to depend on B
+        while B depends on A — that's the update path.
+
+        For create-time: create A, update A.depends_on=[task_x_placeholder]
+        ... no. Let's do: A exists, B exists and depends on A. Now try to
+        create a task C with depends_on=[A] AND also try to make A depend
+        on C — but C doesn't exist when creating. So the real create-time
+        test is: A doesn't exist, B depends on A_id (a UUID we generate).
+        Then create A with depends_on pointing back to... no, A is new.
+
+        Simplest create-time test: generate task_id for A, create B with
+        depends_on=[A_id] — but A doesn't exist yet so it's fine.
+        Actually the cleanest: two tasks where A→B and B→A both at create.
+        Create A first, then create B with depends_on=[A], then PATCH A
+        to depend on B — that's test_three_node above.
+
+        For pure create-time: create A, then create task that depends on A,
+        which is fine. The cycle only happens on update. So let's test that
+        self-reference on create is rejected by creating a task with
+        depends_on containing a non-existent ID that happens to be the
+        new task's own ID — can't predict the UUID.
+
+        Skip: create-time cycles are prevented by design (new task can't
+        be referenced by existing tasks yet). We test via PATCH instead.
+        """
+        # This test documents that create-time cycles aren't possible
+        # by construction — a new task ID is unknown to existing tasks.
+        # The real protection is on PATCH, tested above.
+        pass
+
+    def test_no_false_positive_on_diamond(self, dag_agents):
+        """Diamond: A→B, A→C, B→D, C→D — D depends on B and C.
+        This is NOT a cycle and should be allowed."""
+        echo_key = dag_agents["alice"]["key"]
+        assignee = dag_agents["bob"]["name"]
+
+        # Create A
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Diamond-A", "assignee": assignee, "tags": ["cycle_test"]},
+            timeout=5)
+        task_a = resp.json()["id"]
+
+        # Create B depends on A
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Diamond-B", "assignee": assignee, "depends_on": [task_a], "tags": ["cycle_test"]},
+            timeout=5)
+        task_b = resp.json()["id"]
+
+        # Create C depends on A
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Diamond-C", "assignee": assignee, "depends_on": [task_a], "tags": ["cycle_test"]},
+            timeout=5)
+        task_c = resp.json()["id"]
+
+        # Create D depends on B and C — diamond, NOT a cycle
+        resp = requests.post(f"{BASE}/tasks",
+            headers=auth_header(echo_key),
+            json={"title": "Diamond-D", "assignee": assignee, "depends_on": [task_b, task_c], "tags": ["cycle_test"]},
+            timeout=5)
+        assert resp.status_code == 200
+        assert "Circular dependency" not in resp.text

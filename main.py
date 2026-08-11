@@ -570,6 +570,64 @@ def advance_ready_tasks(conn, completed_task_id: str):
 
     return advanced
 
+def detect_cycle(conn, task_id: str, depends_on: list) -> tuple:
+    """Check whether setting task_id.depends_on = depends_on would create a cycle in the DAG.
+
+    A cycle exists if task_id is reachable by following the dependency chain
+    starting from any task in depends_on.  More precisely: if any dep in
+    depends_on transitively depends on task_id, we'd have a loop.
+
+    Returns (has_cycle: bool, cycle_path: list[str] | None).
+    """
+    if not depends_on:
+        return (False, None)
+
+    # Build adjacency map: task → its depends_on list
+    # We need to check if adding edges (task_id → dep) for each dep creates a cycle.
+    # A cycle occurs if task_id is already reachable from any dep by following
+    # reverse edges (i.e., dep depends on ... depends on task_id).
+    # Equivalently: starting from task_id, follow depends_on edges; if we reach
+    # task_id itself, there's a cycle.
+    #
+    # But task_id might not exist yet (create). So we simulate:
+    # Build graph from existing tasks + the proposed edges, then DFS from task_id.
+
+    # Load all existing task→depends_on edges
+    all_tasks = conn.execute("SELECT id, depends_on FROM tasks").fetchall()
+    graph = {}
+    for t in all_tasks:
+        graph[t["id"]] = json.loads(t["depends_on"] or "[]")
+
+    # Add/update the proposed edges
+    graph[task_id] = list(depends_on)
+
+    # DFS from task_id — if we revisit task_id, there's a cycle
+    visited = set()
+    rec_stack = set()
+
+    def dfs(node, path):
+        if node in rec_stack:
+            # Found cycle — build path from first occurrence
+            idx = path.index(node)
+            return path[idx:] + [node]
+        if node in visited:
+            return None
+        visited.add(node)
+        rec_stack.add(node)
+        path.append(node)
+        for neighbor in graph.get(node, []):
+            result = dfs(neighbor, list(path))
+            if result is not None:
+                return result
+        rec_stack.discard(node)
+        return None
+
+    cycle_path = dfs(task_id, [])
+    if cycle_path:
+        return (True, cycle_path)
+    return (False, None)
+
+
 # ── Task Endpoints ──────────────────────────────────────
 @app.post("/tasks")
 def create_task(payload: TaskCreate, agent: dict = Depends(resolve_agent)):
@@ -578,6 +636,13 @@ def create_task(payload: TaskCreate, agent: dict = Depends(resolve_agent)):
     now = time.time()
     with get_db() as conn:
         assignee_id = _resolve_assignee(conn, payload.assignee)
+
+        # Cycle detection: reject if depends_on would create a circular dependency
+        if payload.depends_on:
+            has_cycle, cycle_path = detect_cycle(conn, task_id, payload.depends_on)
+            if has_cycle:
+                raise HTTPException(400, f"Circular dependency detected: {' → '.join(cycle_path)}")
+
         # If task has unmet dependencies, it starts as pending regardless of assignee
         deps_met = True
         if payload.depends_on:
@@ -682,6 +747,10 @@ def update_task(task_id: str, payload: TaskUpdate, agent: dict = Depends(resolve
         if payload.result is not None:
             updates["result"] = payload.result
         if payload.depends_on is not None:
+            # Cycle detection on update
+            has_cycle, cycle_path = detect_cycle(conn, task_id, payload.depends_on)
+            if has_cycle:
+                raise HTTPException(400, f"Circular dependency detected: {' → '.join(cycle_path)}")
             updates["depends_on"] = json.dumps(payload.depends_on)
         if payload.auto_advance is not None:
             updates["auto_advance"] = 1 if payload.auto_advance else 0
