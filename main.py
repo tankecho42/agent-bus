@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, Body
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # ── Config ──────────────────────────────────────────────
@@ -172,6 +173,15 @@ class MessageSend(BaseModel):
 
 # ── App ─────────────────────────────────────────────────
 app = FastAPI(title="Agent Communication Bus", version="1.0.0")
+
+# CORS — allow dashboard and other frontend apps
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def health():
