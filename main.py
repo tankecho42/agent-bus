@@ -369,7 +369,17 @@ def get_inbox(
         """
         params = [agent["id"]]
         if unread_only:
-            query += " AND m.read_at IS NULL"
+            # Per-agent unread: a message is unread for THIS agent if its id
+            # is NOT in read_by JSON array for this agent. Also exclude messages
+            # the agent itself sent (don't show own broadcasts as unread).
+            query += """ AND m.from_id != ?
+                AND (
+                    m.read_by IS NULL
+                    OR m.read_by = '[]'
+                    OR json_extract(m.read_by, '$') NOT LIKE ?
+                )"""
+            agent_pattern = f'%"{agent["id"]}"%'
+            params = [agent["id"], agent["id"], agent_pattern]
         query += " ORDER BY m.priority DESC, m.created_at DESC LIMIT ? OFFSET ?"
         params += [limit, offset]
         rows = conn.execute(query, params).fetchall()
@@ -378,10 +388,21 @@ def get_inbox(
             now = time.time()
             msg_ids = [r["id"] for r in rows]
             placeholders = ",".join("?" * len(msg_ids))
-            conn.execute(
-                f"UPDATE messages SET read_at = COALESCE(read_at, ?), read_by = ? WHERE id IN ({placeholders})",
-                [now, json.dumps([agent["id"]])] + msg_ids
-            )
+            # Per-agent read tracking: merge current agent into each message's read_by array
+            # instead of overwriting. This fixes the bug where multi-agent reads clobber each other.
+            for mid in msg_ids:
+                row = conn.execute("SELECT read_by FROM messages WHERE id = ?", (mid,)).fetchone()
+                if row:
+                    try:
+                        readers = json.loads(row["read_by"] or "[]")
+                    except (json.JSONDecodeError, TypeError):
+                        readers = []
+                    if agent["id"] not in readers:
+                        readers.append(agent["id"])
+                    conn.execute(
+                        "UPDATE messages SET read_at = COALESCE(read_at, ?), read_by = ? WHERE id = ?",
+                        (now, json.dumps(readers), mid)
+                    )
 
     return {"messages": [dict(r) for r in rows], "count": len(rows)}
 
@@ -456,6 +477,31 @@ def get_message(msg_id: str, agent: dict = Depends(resolve_agent)):
         d["read_by"] = read_list
     return d
 
+@app.post("/messages/{msg_id}/read")
+def mark_message_read(msg_id: str, agent: dict = Depends(resolve_agent)):
+    """标记单条消息为已读（per-agent）。修复 R17：CC agents 调这个端点不再 404。"""
+    with get_db() as conn:
+        row = conn.execute("SELECT id, read_at, read_by FROM messages WHERE id = ?", (msg_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Message not found")
+
+        try:
+            readers = json.loads(row["read_by"] or "[]")
+        except (json.JSONDecodeError, TypeError):
+            readers = []
+
+        if agent["id"] not in readers:
+            readers.append(agent["id"])
+            now = time.time()
+            conn.execute(
+                "UPDATE messages SET read_at = COALESCE(read_at, ?), read_by = ? WHERE id = ?",
+                (now, json.dumps(readers), msg_id)
+            )
+        else:
+            now = row["read_at"] or time.time()
+
+    return {"id": msg_id, "read": True, "read_at": now, "read_by": readers}
+
 @app.delete("/messages/{msg_id}")
 def delete_message(msg_id: str, agent: dict = Depends(resolve_agent)):
     """删除消息（仅发送者可删）。"""
@@ -479,8 +525,14 @@ def get_stats(agent: dict = Depends(resolve_agent)):
         public = conn.execute("SELECT COUNT(*) AS c FROM messages WHERE channel = 'public'").fetchone()["c"]
         agents = conn.execute("SELECT COUNT(*) AS c FROM agents").fetchone()["c"]
         my_unread = conn.execute(
-            "SELECT COUNT(*) AS c FROM messages WHERE (to_id = ? OR channel = 'broadcast') AND read_at IS NULL",
-            (agent["id"],)
+            """SELECT COUNT(*) AS c FROM messages
+               WHERE (to_id = ? OR channel = 'broadcast')
+                 AND from_id != ?
+                 AND (
+                     read_by IS NULL OR read_by = '[]'
+                     OR json_extract(read_by, '$') NOT LIKE ?
+                 )""",
+            (agent["id"], agent["id"], f'%"{agent["id"]}"%')
         ).fetchone()["c"]
     return {
         "agents": agents,
@@ -785,6 +837,202 @@ def my_active_tasks(agent: dict = Depends(resolve_agent)):
             (agent["id"],)
         ).fetchall()
     return {"tasks": [dict(r) for r in rows], "count": len(rows)}
+
+# ── Error Recovery Endpoints (master key only) ──────────
+
+TASK_TIMEOUT_HOURS = float(os.getenv("TASK_TIMEOUT_HOURS", "2"))
+HEARTBEAT_DEAD_THRESHOLD = int(os.getenv("HEARTBEAT_DEAD_THRESHOLD", "5400"))  # 90 min
+
+@app.post("/recovery/scan")
+def recovery_scan(
+    dry_run: bool = Query(True, description="If true, report only without making changes"),
+    _=Depends(require_master),
+):
+    """Scan for stale tasks and dead agents. Master key required.
+
+    - dry_run=true (default): Report only, no state changes.
+    - dry_run=false: Execute full recovery cycle (mark stale, recover dead agents, unblock DAGs).
+    """
+    now = time.time()
+    stale_threshold = now - (TASK_TIMEOUT_HOURS * 3600)
+    dead_threshold = now - HEARTBEAT_DEAD_THRESHOLD
+
+    result = {
+        "timestamp": now,
+        "dry_run": dry_run,
+        "stale_tasks": [],
+        "dead_agents": [],
+        "dag_unblocked": [],
+        "actions_taken": [],
+    }
+
+    with get_db() as conn:
+        # 1. Scan stale tasks (in_progress longer than TASK_TIMEOUT_HOURS)
+        stale_rows = conn.execute(
+            """SELECT t.id, t.title, t.assignee, t.started_at,
+                      a.name AS assignee_name
+               FROM tasks t
+               LEFT JOIN agents a ON t.assignee = a.id
+               WHERE t.status = 'in_progress'
+                 AND t.started_at IS NOT NULL
+                 AND t.started_at < ?""",
+            (stale_threshold,)
+        ).fetchall()
+
+        for r in stale_rows:
+            age_h = (now - r["started_at"]) / 3600
+            result["stale_tasks"].append({
+                "task_id": r["id"],
+                "title": r["title"],
+                "assignee": r["assignee_name"] or "unassigned",
+                "age_hours": round(age_h, 1),
+            })
+
+        # 2. Scan dead agents (heartbeat older than HEARTBEAT_DEAD_THRESHOLD)
+        dead_rows = conn.execute(
+            """SELECT id, name, last_seen
+               FROM agents
+               WHERE last_seen IS NOT NULL AND last_seen < ?
+               ORDER BY last_seen""",
+            (dead_threshold,)
+        ).fetchall()
+
+        for r in dead_rows:
+            result["dead_agents"].append({
+                "agent_id": r["id"],
+                "name": r["name"],
+                "last_seen": r["last_seen"],
+                "dead_seconds": int(now - (r["last_seen"] or 0)),
+            })
+
+        # 3. Scan blocked DAG nodes
+        pending = conn.execute(
+            "SELECT id, title, depends_on, auto_advance, assignee FROM tasks WHERE status = 'pending'"
+        ).fetchall()
+        for task in pending:
+            deps = json.loads(task["depends_on"] or "[]")
+            if not deps:
+                continue
+            all_done = True
+            for dep_id in deps:
+                dep = conn.execute("SELECT status FROM tasks WHERE id = ?", (dep_id,)).fetchone()
+                if not dep or dep["status"] != "done":
+                    all_done = False
+                    break
+            if all_done and task["assignee"]:
+                result["dag_unblocked"].append({
+                    "task_id": task["id"],
+                    "title": task["title"],
+                    "reason": "deps_met_but_not_advanced",
+                })
+
+    # 4. Execute recovery if not dry_run
+    if not dry_run:
+        # Mark stale tasks
+        if result["stale_tasks"]:
+            stale_ids = [s["task_id"] for s in result["stale_tasks"]]
+            with get_db() as conn:
+                for tid in stale_ids:
+                    conn.execute(
+                        "UPDATE tasks SET status = 'stale', updated_at = ? WHERE id = ? AND status = 'in_progress'",
+                        (now, tid)
+                    )
+            result["actions_taken"].append(f"Marked {len(stale_ids)} stale tasks")
+
+        # Recover dead agents
+        for d in result["dead_agents"]:
+            with get_db() as conn:
+                agent_row = conn.execute(
+                    "SELECT id FROM agents WHERE name = ?", (d["name"],)
+                ).fetchone()
+                if not agent_row:
+                    continue
+                tasks = conn.execute(
+                    """SELECT id FROM tasks
+                       WHERE assignee = ? AND status IN ('assigned', 'in_progress', 'stale')""",
+                    (agent_row["id"],)
+                ).fetchall()
+                recovered_count = 0
+                for t in tasks:
+                    conn.execute(
+                        """UPDATE tasks SET status = 'pending', assignee = NULL,
+                           assigned_at = NULL, updated_at = ? WHERE id = ?""",
+                        (now, t["id"])
+                    )
+                    recovered_count += 1
+                if recovered_count:
+                    result["actions_taken"].append(
+                        f"Recovered {recovered_count} tasks from dead agent {d['name']}"
+                    )
+
+        # Force-advance blocked DAG nodes
+        if result["dag_unblocked"]:
+            block_ids = [b["task_id"] for b in result["dag_unblocked"]]
+            with get_db() as conn:
+                for tid in block_ids:
+                    conn.execute(
+                        "UPDATE tasks SET status = 'assigned', assigned_at = ?, updated_at = ? WHERE id = ?",
+                        (now, now, tid)
+                    )
+            result["actions_taken"].append(f"Force-advanced {len(block_ids)} blocked DAG tasks")
+
+    return result
+
+
+@app.post("/recovery/agent-crash/{agent_name}")
+def recovery_agent_crash(
+    agent_name: str,
+    _=Depends(require_master),
+):
+    """Manually mark an agent as crashed and release all its tasks back to pending.
+
+    Use this when an agent is known to be down (e.g., host reboot, process killed)
+    but the heartbeat hasn't expired yet. Master key required.
+    """
+    now = time.time()
+    with get_db() as conn:
+        agent_row = conn.execute(
+            "SELECT id, name FROM agents WHERE name = ?", (agent_name,)
+        ).fetchone()
+        if not agent_row:
+            raise HTTPException(404, f"Agent '{agent_name}' not found")
+
+        tasks = conn.execute(
+            """SELECT id, title, status FROM tasks
+               WHERE assignee = ? AND status IN ('assigned', 'in_progress', 'stale')""",
+            (agent_row["id"],)
+        ).fetchall()
+
+        recovered = []
+        for t in tasks:
+            conn.execute(
+                """UPDATE tasks SET status = 'pending', assignee = NULL,
+                   assigned_at = NULL, updated_at = ? WHERE id = ?""",
+                (now, t["id"])
+            )
+            recovered.append({
+                "task_id": t["id"],
+                "title": t["title"],
+                "previous_status": t["status"],
+            })
+
+        # Log to audit
+        if recovered:
+            conn.execute(
+                """INSERT INTO audit_events (id, timestamp, actor_id, actor_name, action, entity_type, entity_id, changes, context)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (f"ae_{int(now)}_crash", now, "system", "recovery_api",
+                 "agent_crash_recovery", "agent", agent_row["id"],
+                 json.dumps({"recovered_tasks": len(recovered)}),
+                 json.dumps({"agent_name": agent_name, "triggered_by": "api"}))
+            )
+
+    return {
+        "agent": agent_name,
+        "recovered_count": len(recovered),
+        "recovered_tasks": recovered,
+    }
+
 
 # ── Run ─────────────────────────────────────────────────
 if __name__ == "__main__":
