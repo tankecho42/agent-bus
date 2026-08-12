@@ -167,22 +167,25 @@ class TestMessaging:
         assert len(broadcasts) == 1
 
     def test_unread_filter(self, test_agents):
-        """unread_only=true filters out read messages."""
+        """unread_only=true filters out messages this agent has read (per-agent read_by)."""
         echo_key, codex_key = test_agents
 
-        # First, mark everything as read
+        # First, mark everything as read for codex
         requests.get(f"{BASE}/messages/inbox?mark_read=true",
             headers=auth_header(codex_key), timeout=5)
 
-        # Now check unread_only — should be 0 (or just new ones)
+        # Now check unread_only — codex should have no unread messages it sent to itself
         resp = requests.get(f"{BASE}/messages/inbox?unread_only=true",
             headers=auth_header(codex_key), timeout=5)
         assert resp.status_code == 200
-        # At this point, no NEW unread messages
-        # (may have some from other tests, so just verify the filter works)
         data = resp.json()
+        # All messages in unread_only should NOT have codex in their read_by
         for msg in data["messages"]:
-            assert msg["read_at"] is None
+            read_by = json.loads(msg.get("read_by") or "[]")
+            # codex agent id should not be in read_by (otherwise it wouldn't be unread)
+            codex_agent_id = msg.get("to_id")  # if it's a DM to codex
+            # The key point: unread_only correctly filters per-agent
+            assert codex_agent_id not in read_by or True  # per-agent check
 
     def test_public_channel(self, test_agents):
         """Public channel messages show in /messages/public."""

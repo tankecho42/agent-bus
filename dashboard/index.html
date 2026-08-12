@@ -453,12 +453,43 @@ const AGENT_META = {
 let AGENT_NAMES = {};
 
 // ── Helpers ───────────────────────────────────────────────
+// Try direct fetch first; if CORS blocks, retry through a header-forwarding proxy
+const CORS_PROXIES = [
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+];
+let _directFailed = false;
+
 async function api(path) {
-  const res = await fetch(`${AB_BASE}${path}`, {
-    headers: { 'X-API-Key': AB_KEY }
-  });
-  if (!res.ok) throw new Error(`${path} → ${res.status}`);
-  return res.json();
+  const directUrl = `${AB_BASE}${path}`;
+
+  // Attempt 1: direct fetch (works if served from same origin or API adds CORS headers)
+  if (!_directFailed) {
+    try {
+      const res = await fetch(directUrl, {
+        headers: { 'X-API-Key': AB_KEY },
+        mode: 'cors',
+      });
+      if (res.ok) return res.json();
+    } catch {
+      _directFailed = true;
+    }
+  }
+
+  // Attempt 2: through CORS proxy — embed key as header via X-Forwarded
+  // corsproxy.io forwards all request headers
+  for (const proxyFn of CORS_PROXIES) {
+    try {
+      const res = await fetch(proxyFn(directUrl), {
+        headers: { 'X-API-Key': AB_KEY, 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if (res.ok) return res.json();
+    } catch { /* try next */ }
+  }
+
+  throw new Error(
+    `Cannot reach AgentBus API. If opening this file directly, the API server ` +
+    `needs CORS headers, or serve this dashboard behind a reverse proxy.`
+  );
 }
 
 // Timestamps from the API are Unix epoch floats (seconds) — convert to ms
