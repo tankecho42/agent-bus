@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echo Team Dashboard</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0b;
+    --surface: #131315;
+    --surface-hover: #1a1a1d;
+    --border: #232327;
+    --text: #e8e8ea;
+    --text-secondary: #8a8a92;
+    --text-muted: #5a5a62;
+    --accent: #2d7ff9;
+    --green: #3dd68c;
+    --yellow: #f0b232;
+    --red: #f0564f;
+    --radius: 10px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace;
+  }
+
+  html { height: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* ── Header ──────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #1655b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .header-time {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Layout ──────────────────────────────────────────── */
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── Panel Base ──────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+  }
+  .panel-body { padding: 16px 18px; }
+
+  /* ── Left Column: Agents ─────────────────────────────── */
+  .left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: sticky;
+    top: 90px;
+  }
+
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: default;
+  }
+  .agent-card:hover {
+    border-color: var(--text-muted);
+    background: var(--surface-hover);
+  }
+  .agent-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .status-dot.active {
+    background: var(--green);
+    box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.15);
+  }
+  .status-dot.stale {
+    background: var(--yellow);
+    box-shadow: 0 0 0 3px rgba(240, 178, 50, 0.15);
+  }
+  .status-dot.dead {
+    background: var(--red);
+    box-shadow: 0 0 0 3px rgba(240, 86, 79, 0.15);
+  }
+  .agent-name {
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .agent-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .agent-badge.active { color: var(--green); border-color: rgba(61, 214, 140, 0.3); }
+  .agent-badge.stale  { color: var(--yellow); border-color: rgba(240, 178, 50, 0.3); }
+  .agent-badge.dead   { color: var(--red); border-color: rgba(240, 86, 79, 0.3); }
+  .agent-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 21px;
+  }
+  .agent-location {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .agent-location svg {
+    width: 12px;
+    height: 12px;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+  .agent-last-seen {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  /* ── Right Column ────────────────────────────────────── */
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ── Stats Grid ──────────────────────────────────────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .stat-value {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* ── Message Timeline ────────────────────────────────── */
+  .message-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .message-item {
+    display: flex;
+    gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    cursor: default;
+  }
+  .message-item:last-child { border-bottom: none; }
+  .message-item:hover { background: var(--surface-hover); }
+  .msg-line {
+    width: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    flex-shrink: 0;
+    margin-left: 6px;
+  }
+  .msg-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .msg-route {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+    font-size: 12px;
+  }
+  .msg-from, .msg-to {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--text);
+    font-size: 12px;
+  }
+  .msg-arrow {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .msg-time {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .msg-subject {
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .msg-read {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  /* ── Loading / Empty States ──────────────────────────── */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .error-banner {
+    background: rgba(240, 86, 79, 0.08);
+    border: 1px solid rgba(240, 86, 79, 0.25);
+    color: var(--red);
+    padding: 10px 18px;
+    font-size: 12px;
+    display: none;
+  }
+  .error-banner.visible { display: block; }
+
+  /* ── Responsive ──────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .container {
+      grid-template-columns: 1fr;
+      padding: 16px;
+      gap: 16px;
+    }
+    .left-col {
+      position: static;
+    }
+    header {
+      padding: 16px;
+    }
+    header h1 { font-size: 16px; }
+    .header-time { font-size: 12px; }
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .stat-value { font-size: 24px; }
+  }
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .stat-card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<header>
+  <div class="header-title">
+    <div class="logo">E</div>
+    <h1>Echo Team Dashboard</h1>
+  </div>
+  <div class="header-time" id="clock">—</div>
+</header>
+
+<!-- ─── Error Banner ─── -->
+<div class="error-banner" id="errorBanner"></div>
+
+<!-- ─── Main Container ─── -->
+<div class="container">
+  <!-- Left: Agents -->
+  <div class="left-col">
+    <div id="agentList">
+      <div class="loading"><div class="spinner"></div>Loading agents…</div>
+    </div>
+  </div>
+
+  <!-- Right: Stats + Messages -->
+  <div class="right-col">
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Messages</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-sub" id="statTotalSub">All time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Last 24h</div>
+        <div class="stat-value" id="stat24h">—</div>
+        <div class="stat-sub">Messages today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Unread</div>
+        <div class="stat-value" id="statUnread">—</div>
+        <div class="stat-sub">Unread inbox</div>
+      </div>
+    </div>
+
+    <!-- Message Timeline -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Recent Messages</span>
+        <span class="panel-title" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px" id="msgCount"></span>
+      </div>
+      <div id="messageList">
+        <div class="loading"><div class="spinner"></div>Loading messages…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+const AB_BASE    = 'http://43.132.211.23:7700';
+const AB_KEY     = 'ab_85fa538dd01a49b3b189337a';
+const REFRESH_MS = 30000;
+
+// Agent display metadata (location label per known agent name)
+const AGENT_META = {
+  'echo':                { location: 'Mac mini · Tank desk' },
+  'claude-code-hk':      { location: 'HK Server · 43.132.211.23' },
+  'claude-code-pi':      { location: 'Raspberry Pi · 192.168.31.118' },
+  'claude-code-macmini': { location: 'Mac mini M4 · Tank local' },
+  'codex-macmini':       { location: 'Mac mini M4 · Tank local' },
+};
+
+// Runtime map: agent_id → name (built from /agents response)
+let AGENT_NAMES = {};
+
+// ── Helpers ───────────────────────────────────────────────
+async function api(path) {
+  const res = await fetch(`${AB_BASE}${path}`, {
+    headers: { 'X-API-Key': AB_KEY }
+  });
+  if (!res.ok) throw new Error(`${path} → ${res.status}`);
+  return res.json();
+}
+
+// Timestamps from the API are Unix epoch floats (seconds) — convert to ms
+function tsToDate(ts) {
+  if (!ts) return null;
+  // If it's already a string with '-' (ISO), parse directly; otherwise treat as epoch seconds
+  if (typeof ts === 'string' && ts.includes('-')) return new Date(ts);
+  return new Date(ts * 1000);
+}
+
+function timeAgo(ts) {
+  const d = tsToDate(ts);
+  if (!d) return 'never';
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 0)     return 'just now';
+  if (sec < 60)    return `${sec}s ago`;
+  if (sec < 3600)  return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return `${Math.floor(sec / 86400)}d ago`;
+}
+
+function getStatus(ts) {
+  const d = tsToDate(ts);
+  if (!d) return { label: 'dead', cls: 'dead' };
+  const mins = (Date.now() - d.getTime()) / 60000;
+  if (mins < 30) return { label: 'active', cls: 'active' };
+  if (mins < 90) return { label: 'stale',  cls: 'stale'  };
+  return { label: 'dead', cls: 'dead' };
+}
+
+function formatTime(ts) {
+  const d = tsToDate(ts);
+  if (!d) return '';
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  if (isToday) return `${hh}:${mm}`;
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = String(s);
+  return div.innerHTML;
+}
+
+function agentName(id) {
+  return AGENT_NAMES[id] || id || '?';
+}
+
+// ── Render: Clock ─────────────────────────────────────────
+function updateClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Render: Agents ────────────────────────────────────────
+function renderAgents(agents) {
+  const container = document.getElementById('agentList');
+  if (!agents || agents.length === 0) {
+    container.innerHTML = '<div class="empty">No agents registered</div>';
+    return;
+  }
+
+  // Sort: active first, then stale, then dead
+  const order = { active: 0, stale: 1, dead: 2 };
+  const sorted = [...agents].sort((a, b) => {
+    const sa = getStatus(a.last_seen).cls;
+    const sb = getStatus(b.last_seen).cls;
+    return order[sa] - order[sb];
+  });
+
+  container.innerHTML = sorted.map(a => {
+    const name   = a.name || a.id || 'unknown';
+    const meta   = AGENT_META[name] || {};
+    const status = getStatus(a.last_seen);
+    return `
+      <div class="agent-card">
+        <div class="agent-card-top">
+          <div class="status-dot ${status.cls}"></div>
+          <div class="agent-name">${escapeHtml(name)}</div>
+          <div class="agent-badge ${status.cls}">${status.label}</div>
+        </div>
+        <div class="agent-meta">
+          <div class="agent-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            ${escapeHtml(meta.location || a.description || '—')}
+          </div>
+          <div class="agent-last-seen">${timeAgo(a.last_seen)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Render: Stats ─────────────────────────────────────────
+function renderStats(metrics) {
+  let total  = '—', count24 = '—', unread = '—';
+
+  if (metrics) {
+    const m = metrics.messages || metrics;
+    total   = m.total       ?? m.total_messages ?? '—';
+    count24 = m.last_24h    ?? m.messages_24h   ?? '—';
+    unread  = m.unread_total ?? m.unread        ?? 0;
+  }
+
+  document.getElementById('statTotal').textContent  = total;
+  document.getElementById('stat24h').textContent    = count24;
+  document.getElementById('statUnread').textContent = unread;
+}
+
+// ── Render: Messages ──────────────────────────────────────
+function renderMessages(messages) {
+  const container = document.getElementById('messageList');
+  const countEl   = document.getElementById('msgCount');
+  if (!messages || messages.length === 0) {
+    container.innerHTML = '<div class="empty">No recent messages</div>';
+    countEl.textContent = '';
+    return;
+  }
+
+  countEl.textContent = `${messages.length} shown`;
+
+  container.innerHTML = '<div class="message-list">' + messages.map(m => {
+    const from   = m.from_name || agentName(m.from_id);
+    const to     = m.channel === 'broadcast' ? '📢 broadcast' : agentName(m.to_id);
+    const subj   = m.subject || '(no subject)';
+    const time   = formatTime(m.created_at);
+    const unread = !m.read_at;
+
+    return `
+      <div class="message-item">
+        ${unread ? '<div class="msg-read"></div>' : '<div class="msg-line"></div>'}
+        <div class="msg-content">
+          <div class="msg-route">
+            <span class="msg-from">${escapeHtml(from)}</span>
+            <span class="msg-arrow">→</span>
+            <span class="msg-to">${escapeHtml(to)}</span>
+            <span class="msg-time">${time}</span>
+          </div>
+          <div class="msg-subject">${escapeHtml(subj)}</div>
+        </div>
+      </div>
+    `;
+  }).join('') + '</div>';
+}
+
+// ── Error Handling ────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = `⚠ ${msg}`;
+  el.classList.add('visible');
+}
+function clearError() {
+  document.getElementById('errorBanner').classList.remove('visible');
+}
+
+// ── Main Data Fetch ───────────────────────────────────────
+async function refresh() {
+  try {
+    const [agentsData, metricsData, inboxData] = await Promise.all([
+      api('/agents'),
+      api('/metrics'),
+      api('/messages/inbox?limit=20'),
+    ]);
+
+    clearError();
+
+    // Build agent ID → name map
+    const agents = agentsData.agents || agentsData.data || (Array.isArray(agentsData) ? agentsData : []);
+    AGENT_NAMES = {};
+    agents.forEach(a => { AGENT_NAMES[a.id] = a.name; });
+
+    // Render agents
+    renderAgents(agents);
+
+    // Render stats
+    renderStats(metricsData);
+
+    // Render messages
+    const messages = inboxData.messages || inboxData.data || (Array.isArray(inboxData) ? inboxData : []);
+    renderMessages(messages);
+
+  } catch (err) {
+    showError(`Failed to fetch: ${err.message}`);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+
+</body>
+</html>
