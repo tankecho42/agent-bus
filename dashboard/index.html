@@ -351,6 +351,31 @@
   }
   .error-banner.visible { display: block; }
 
+  /* ── P0: priority tags / body expand / sort btn ── */
+  .message-item { cursor: pointer; }
+  .message-item.expanded { background: var(--surface-hover); }
+  .prio-tag {
+    font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
+  }
+  .prio-tag.prio-2 { color: var(--red);    background: rgba(240, 86, 79, 0.13); }
+  .prio-tag.prio-1 { color: var(--yellow); background: rgba(240, 178, 50, 0.13); }
+  .msg-line.prio-2 { background: var(--red); }
+  .msg-line.prio-1 { background: var(--yellow); }
+  .msg-body {
+    display: none; margin-top: 8px; padding: 10px 12px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px; font-size: 12px;
+    color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;
+    font-family: var(--mono); line-height: 1.55; max-height: 320px; overflow-y: auto;
+  }
+  .message-item.expanded .msg-body { display: block; }
+  .sort-btn {
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    background: transparent; border: 1px solid var(--border); border-radius: 5px;
+    padding: 3px 9px; cursor: pointer; font-family: var(--font); transition: all 0.15s;
+  }
+  .sort-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
   /* ── Responsive ──────────────────────────────────────── */
   @media (max-width: 900px) {
     .container {
@@ -385,7 +410,10 @@
     <div class="logo">E</div>
     <h1>Echo Team Dashboard</h1>
   </div>
-  <div class="header-time" id="clock">—</div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <span class="header-time" id="lastUpdate" style="color:var(--text-muted)"></span>
+    <div class="header-time" id="clock">—</div>
+  </div>
 </header>
 
 <!-- ─── Error Banner ─── -->
@@ -425,7 +453,10 @@
     <div class="panel">
       <div class="panel-header">
         <span class="panel-title">Recent Messages</span>
-        <span class="panel-title" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px" id="msgCount"></span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="sort-btn" id="sortBtn" onclick="toggleSort()" title="切换排序方式">By priority</button>
+          <span class="panel-title" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px" id="msgCount"></span>
+        </div>
       </div>
       <div id="messageList">
         <div class="loading"><div class="spinner"></div>Loading messages…</div>
@@ -624,26 +655,43 @@ function renderMessages(messages) {
 
   container.innerHTML = '<div class="message-list">' + messages.map(m => {
     const from   = m.from_name || agentName(m.from_id);
-    const to     = m.channel === 'broadcast' ? '📢 broadcast' : agentName(m.to_id);
+    const toTxt  = m.channel === 'broadcast' ? '📢 broadcast'
+                 : m.channel === 'public'    ? '🌐 public'
+                 : agentName(m.to_id);
     const subj   = m.subject || '(no subject)';
     const time   = formatTime(m.created_at);
     const unread = !m.read_at;
+    const prio   = m.priority || 0;
+    const prioTag = prio === 2 ? '<span class="prio-tag prio-2">P2</span>'
+                  : prio === 1 ? '<span class="prio-tag prio-1">P1</span>' : '';
+    const marker = prio === 2 ? '<div class="msg-line prio-2"></div>'
+                 : prio === 1 ? '<div class="msg-line prio-1"></div>'
+                 : unread     ? '<div class="msg-read"></div>'
+                 :              '<div class="msg-line"></div>';
+    const bodyHtml = m.body ? `<div class="msg-body">${escapeHtml(m.body)}</div>` : '';
 
     return `
-      <div class="message-item">
-        ${unread ? '<div class="msg-read"></div>' : '<div class="msg-line"></div>'}
+      <div class="message-item" onclick="toggleMsg(this)">
+        ${marker}
         <div class="msg-content">
           <div class="msg-route">
             <span class="msg-from">${escapeHtml(from)}</span>
             <span class="msg-arrow">→</span>
-            <span class="msg-to">${escapeHtml(to)}</span>
+            <span class="msg-to">${escapeHtml(toTxt)}</span>
+            ${prioTag}
             <span class="msg-time">${time}</span>
           </div>
           <div class="msg-subject">${escapeHtml(subj)}</div>
+          ${bodyHtml}
         </div>
       </div>
     `;
   }).join('') + '</div>';
+}
+
+// 展开/收起消息正文
+function toggleMsg(el) {
+  el.classList.toggle('expanded');
 }
 
 // ── Error Handling ────────────────────────────────────────
@@ -657,6 +705,34 @@ function clearError() {
 }
 
 // ── Main Data Fetch ───────────────────────────────────────
+// ── State: 消息缓存 / 排序 / 刷新时间 ─────────────────────
+let _allMessages = [];
+let _sortMode    = 'priority';   // 'priority' | 'time'
+let _lastRefresh = null;
+
+function sortMessages(list) {
+  const arr = [...list];
+  if (_sortMode === 'time') {
+    arr.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  } else {
+    arr.sort((a, b) => ((b.priority || 0) - (a.priority || 0)) || ((b.created_at || 0) - (a.created_at || 0)));
+  }
+  return arr;
+}
+
+function toggleSort() {
+  _sortMode = _sortMode === 'priority' ? 'time' : 'priority';
+  document.getElementById('sortBtn').textContent = _sortMode === 'priority' ? 'By priority' : 'By time';
+  if (_allMessages.length) renderMessages(sortMessages(_allMessages));
+}
+
+function updateRefreshLabel() {
+  const el = document.getElementById('lastUpdate');
+  if (!el || !_lastRefresh) return;
+  const sec = Math.max(0, Math.floor((Date.now() - _lastRefresh) / 1000));
+  el.textContent = sec < 60 ? `updated ${sec}s ago` : `updated ${Math.floor(sec / 60)}m ago`;
+}
+
 async function refresh() {
   try {
     const [agentsData, metricsData, inboxData] = await Promise.all([
@@ -678,9 +754,14 @@ async function refresh() {
     // Render stats
     renderStats(metricsData);
 
-    // Render messages
+    // Render messages — 缓存后按当前排序渲染
     const messages = inboxData.messages || inboxData.data || (Array.isArray(inboxData) ? inboxData : []);
-    renderMessages(messages);
+    _allMessages = messages;
+    renderMessages(sortMessages(_allMessages));
+
+    // 记录刷新时间
+    _lastRefresh = Date.now();
+    updateRefreshLabel();
 
   } catch (err) {
     showError(`Failed to fetch: ${err.message}`);
@@ -690,6 +771,7 @@ async function refresh() {
 // ── Init ──────────────────────────────────────────────────
 refresh();
 setInterval(refresh, REFRESH_MS);
+setInterval(updateRefreshLabel, 1000);   // 每秒更新"上次刷新"
 </script>
 
 </body>
