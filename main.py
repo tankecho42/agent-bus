@@ -589,6 +589,58 @@ def get_metrics(agent: dict = Depends(resolve_agent)):
         "unread_total": unread_total,
     }
 
+@app.get("/stats/timeline")
+def stats_timeline(agent: dict = Depends(resolve_agent)):
+    """过去 24 小时每小时消息数 — 供 dashboard 趋势图。
+
+    返回 24 个整点桶(含 count=0 的空桶), 方便前端直接画柱状/折线。
+    """
+    now = time.time()
+    start = now - 24 * 3600
+    first_hour = int(start - (start % 3600))
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT created_at FROM messages WHERE created_at >= ?", (start,)
+        ).fetchall()
+    buckets = {}
+    for r in rows:
+        hour = int(r["created_at"] - (r["created_at"] % 3600))
+        buckets[hour] = buckets.get(hour, 0) + 1
+    timeline = [
+        {"hour": first_hour + i * 3600, "count": buckets.get(first_hour + i * 3600, 0)}
+        for i in range(24)
+    ]
+    return {"timeline": timeline, "total_24h": len(rows), "bucket_size": 3600}
+
+
+@app.post("/messages/read-all")
+def read_all_messages(agent: dict = Depends(resolve_agent)):
+    """标记当前 agent 的所有未读消息为已读 (per-agent read_by, 不影响他人)。"""
+    now = time.time()
+    pattern = f'%"{agent["id"]}"%'
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT id, read_by FROM messages
+               WHERE (to_id = ? OR channel = 'broadcast')
+                 AND from_id != ?
+                 AND (read_by IS NULL OR read_by = '[]'
+                      OR json_extract(read_by, '$') NOT LIKE ?)""",
+            (agent["id"], agent["id"], pattern),
+        ).fetchall()
+        for r in rows:
+            try:
+                readers = json.loads(r["read_by"] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                readers = []
+            if agent["id"] not in readers:
+                readers.append(agent["id"])
+            conn.execute(
+                "UPDATE messages SET read_at = COALESCE(read_at, ?), read_by = ? WHERE id = ?",
+                (now, json.dumps(readers), r["id"]),
+            )
+    return {"marked_read": len(rows)}
+
+
 # ── Task Models ─────────────────────────────────────────
 class TaskCreate(BaseModel):
     title: str

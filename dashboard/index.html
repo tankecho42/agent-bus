@@ -34,7 +34,6 @@
     min-height: 100vh;
   }
 
-  /* ── Scrollbar ───────────────────────────────────────── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -42,326 +41,154 @@
 
   /* ── Header ──────────────────────────────────────────── */
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 32px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 100;
     backdrop-filter: blur(12px);
   }
-  .header-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+  .header-title { display: flex; align-items: center; gap: 12px; }
   .logo {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 32px; height: 32px; border-radius: 8px;
     background: linear-gradient(135deg, var(--accent), #1655b8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 16px;
-    color: #fff;
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; color: #fff; flex-shrink: 0;
   }
-  header h1 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
-  }
+  header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
   .header-time {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
+    font-family: var(--mono); font-size: 13px;
+    color: var(--text-secondary); font-variant-numeric: tabular-nums;
   }
 
   /* ── Layout ──────────────────────────────────────────── */
   .container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 28px 32px;
-    display: grid;
-    grid-template-columns: 340px 1fr;
-    gap: 24px;
-    align-items: start;
+    max-width: 1400px; margin: 0 auto; padding: 28px 32px;
+    display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start;
   }
 
   /* ── Panel Base ──────────────────────────────────────── */
   .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
   }
   .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid var(--border); gap: 10px;
   }
   .panel-title {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-muted);
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-muted);
   }
   .panel-body { padding: 16px 18px; }
 
   /* ── Left Column: Agents ─────────────────────────────── */
-  .left-col {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    position: sticky;
-    top: 90px;
-  }
-
+  .left-col { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 90px; }
   .agent-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
     transition: border-color 0.2s, background 0.2s;
-    cursor: default;
   }
-  .agent-card:hover {
-    border-color: var(--text-muted);
-    background: var(--surface-hover);
-  }
-  .agent-card-top {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-  .status-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    position: relative;
-  }
-  .status-dot.active {
-    background: var(--green);
-    box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.15);
-  }
-  .status-dot.stale {
-    background: var(--yellow);
-    box-shadow: 0 0 0 3px rgba(240, 178, 50, 0.15);
-  }
-  .status-dot.dead {
-    background: var(--red);
-    box-shadow: 0 0 0 3px rgba(240, 86, 79, 0.15);
-  }
+  .agent-card:hover { border-color: var(--text-muted); background: var(--surface-hover); }
+  .agent-card.expanded { border-color: var(--accent); background: var(--surface-hover); }
+  .agent-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.active { background: var(--green); box-shadow: 0 0 0 3px rgba(61,214,140,0.15); }
+  .status-dot.stale   { background: var(--yellow); box-shadow: 0 0 0 3px rgba(240,178,50,0.15); }
+  .status-dot.dead    { background: var(--red); box-shadow: 0 0 0 3px rgba(240,86,79,0.15); }
   .agent-name {
-    font-size: 14px;
-    font-weight: 600;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 14px; font-weight: 600; flex: 1; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
   }
   .agent-badge {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);
   }
-  .agent-badge.active { color: var(--green); border-color: rgba(61, 214, 140, 0.3); }
-  .agent-badge.stale  { color: var(--yellow); border-color: rgba(240, 178, 50, 0.3); }
-  .agent-badge.dead   { color: var(--red); border-color: rgba(240, 86, 79, 0.3); }
-  .agent-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-left: 21px;
-  }
-  .agent-location {
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .agent-location svg {
-    width: 12px;
-    height: 12px;
-    opacity: 0.6;
-    flex-shrink: 0;
-  }
-  .agent-last-seen {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: var(--mono);
+  .agent-badge.active { color: var(--green); border-color: rgba(61,214,140,0.3); }
+  .agent-badge.stale  { color: var(--yellow); border-color: rgba(240,178,50,0.3); }
+  .agent-badge.dead   { color: var(--red); border-color: rgba(240,86,79,0.3); }
+  .agent-meta { display: flex; flex-direction: column; gap: 4px; margin-left: 21px; }
+  .agent-location { font-size: 12px; color: var(--text-secondary); }
+  .agent-last-seen { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+  .agent-detail { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .agent-desc { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.5; }
+  .agent-caps { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cap-tag {
+    font-size: 10px; font-family: var(--mono); color: var(--accent);
+    background: rgba(45,127,249,0.1); border: 1px solid rgba(45,127,249,0.25);
+    padding: 1px 6px; border-radius: 3px;
   }
 
   /* ── Right Column ────────────────────────────────────── */
-  .right-col {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
+  .right-col { display: flex; flex-direction: column; gap: 20px; }
 
   /* ── Stats Grid ──────────────────────────────────────── */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-  }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
   .stat-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-muted);
-    margin-bottom: 10px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px;
   }
-  .stat-value {
-    font-size: 30px;
-    font-weight: 700;
-    letter-spacing: -1px;
-    font-variant-numeric: tabular-nums;
+  .stat-value { font-size: 30px; font-weight: 700; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .stat-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* ── Timeline ────────────────────────────────────────── */
+  #timelineChart { width: 100%; }
+  #timelineChart svg { display: block; width: 100%; height: 56px; }
+
+  /* ── Tabs ────────────────────────────────────────────── */
+  .tabs { display: flex; gap: 2px; }
+  .tab {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    padding: 4px 12px; cursor: pointer; text-transform: uppercase;
+    letter-spacing: 0.5px; font-family: var(--font); transition: all 0.15s;
   }
-  .stat-sub {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 4px;
+  .tab:hover { color: var(--text-secondary); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Filter Bar ──────────────────────────────────────── */
+  .filter-bar {
+    display: flex; gap: 8px; align-items: center; padding: 10px 18px;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
   }
+  .filter-input, .filter-select, .compose-body input, .compose-body textarea, .compose-body select {
+    font-size: 12px; font-family: var(--font); color: var(--text);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; outline: none;
+  }
+  .filter-input { flex: 1; min-width: 140px; }
+  .filter-input:focus, .filter-select:focus,
+  .compose-body input:focus, .compose-body textarea:focus, .compose-body select:focus { border-color: var(--accent); }
+  .toggle { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .toggle input { accent-color: var(--accent); }
+
+  .btn-small {
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    background: transparent; border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 10px; cursor: pointer; font-family: var(--font); transition: all 0.15s;
+  }
+  .btn-small:hover { color: var(--text); border-color: var(--text-muted); background: var(--surface-hover); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #1655b8; color: #fff; border-color: #1655b8; }
 
   /* ── Message Timeline ────────────────────────────────── */
-  .message-list {
-    display: flex;
-    flex-direction: column;
-  }
-  .message-item {
-    display: flex;
-    gap: 14px;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    transition: background 0.15s;
-    cursor: default;
-  }
+  .message-list { display: flex; flex-direction: column; }
+  .message-item { display: flex; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
   .message-item:last-child { border-bottom: none; }
   .message-item:hover { background: var(--surface-hover); }
-  .msg-line {
-    width: 2px;
-    background: var(--border);
-    border-radius: 1px;
-    flex-shrink: 0;
-    margin-left: 6px;
-  }
-  .msg-content {
-    flex: 1;
-    min-width: 0;
-  }
-  .msg-route {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 3px;
-    font-size: 12px;
-  }
-  .msg-from, .msg-to {
-    font-family: var(--mono);
-    font-weight: 600;
-    color: var(--text);
-    font-size: 12px;
-  }
-  .msg-arrow {
-    color: var(--text-muted);
-    font-size: 11px;
-  }
-  .msg-time {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: var(--mono);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .msg-subject {
-    font-size: 13px;
-    color: var(--text-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .msg-read {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex-shrink: 0;
-    margin-top: 5px;
-  }
-
-  /* ── Loading / Empty States ──────────────────────────── */
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-  .spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    margin-right: 10px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .empty {
-    padding: 32px;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-
-  .error-banner {
-    background: rgba(240, 86, 79, 0.08);
-    border: 1px solid rgba(240, 86, 79, 0.25);
-    color: var(--red);
-    padding: 10px 18px;
-    font-size: 12px;
-    display: none;
-  }
-  .error-banner.visible { display: block; }
-
-  /* ── P0: priority tags / body expand / sort btn ── */
-  .message-item { cursor: pointer; }
   .message-item.expanded { background: var(--surface-hover); }
-  .prio-tag {
-    font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
-    text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
-  }
-  .prio-tag.prio-2 { color: var(--red);    background: rgba(240, 86, 79, 0.13); }
-  .prio-tag.prio-1 { color: var(--yellow); background: rgba(240, 178, 50, 0.13); }
+  .msg-line { width: 2px; background: var(--border); border-radius: 1px; flex-shrink: 0; margin-left: 6px; }
   .msg-line.prio-2 { background: var(--red); }
   .msg-line.prio-1 { background: var(--yellow); }
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-route { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 12px; flex-wrap: wrap; }
+  .msg-from, .msg-to { font-family: var(--mono); font-weight: 600; color: var(--text); font-size: 12px; }
+  .msg-arrow { color: var(--text-muted); font-size: 11px; }
+  .msg-time { margin-left: auto; font-size: 11px; color: var(--text-muted); font-family: var(--mono); white-space: nowrap; }
+  .msg-subject { font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .msg-read { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; margin-left: 6px; }
+  .prio-tag { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0; }
+  .prio-tag.prio-2 { color: var(--red); background: rgba(240,86,79,0.13); }
+  .prio-tag.prio-1 { color: var(--yellow); background: rgba(240,178,50,0.13); }
   .msg-body {
     display: none; margin-top: 8px; padding: 10px 12px; background: var(--bg);
     border: 1px solid var(--border); border-radius: 6px; font-size: 12px;
@@ -369,42 +196,35 @@
     font-family: var(--mono); line-height: 1.55; max-height: 320px; overflow-y: auto;
   }
   .message-item.expanded .msg-body { display: block; }
-  .sort-btn {
-    font-size: 11px; font-weight: 500; color: var(--text-secondary);
-    background: transparent; border: 1px solid var(--border); border-radius: 5px;
-    padding: 3px 9px; cursor: pointer; font-family: var(--font); transition: all 0.15s;
-  }
-  .sort-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* ── Compose ─────────────────────────────────────────── */
+  .compose-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .compose-row { display: flex; gap: 8px; }
+  .compose-body textarea { min-height: 64px; resize: vertical; font-family: var(--mono); width: 100%; }
+
+  /* ── Loading / Empty / Error ─────────────────────────── */
+  .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { padding: 32px; text-align: center; color: var(--text-muted); font-size: 13px; }
+  .error-banner { background: rgba(240,86,79,0.08); border: 1px solid rgba(240,86,79,0.25); color: var(--red); padding: 10px 18px; font-size: 12px; display: none; }
+  .error-banner.visible { display: block; }
 
   /* ── Responsive ──────────────────────────────────────── */
   @media (max-width: 900px) {
-    .container {
-      grid-template-columns: 1fr;
-      padding: 16px;
-      gap: 16px;
-    }
-    .left-col {
-      position: static;
-    }
-    header {
-      padding: 16px;
-    }
+    .container { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+    .left-col { position: static; }
+    header { padding: 16px; }
     header h1 { font-size: 16px; }
     .header-time { font-size: 12px; }
-    .stats-grid {
-      grid-template-columns: 1fr 1fr;
-    }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
     .stat-value { font-size: 24px; }
   }
-  @media (max-width: 480px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .stat-card { padding: 16px; }
-  }
+  @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } .stat-card { padding: 16px; } }
 </style>
 </head>
 <body>
 
-<!-- ─── Header ─── -->
 <header>
   <div class="header-title">
     <div class="logo">E</div>
@@ -416,50 +236,73 @@
   </div>
 </header>
 
-<!-- ─── Error Banner ─── -->
 <div class="error-banner" id="errorBanner"></div>
 
-<!-- ─── Main Container ─── -->
 <div class="container">
   <!-- Left: Agents -->
   <div class="left-col">
-    <div id="agentList">
-      <div class="loading"><div class="spinner"></div>Loading agents…</div>
-    </div>
+    <div id="agentList"><div class="loading"><div class="spinner"></div>Loading agents…</div></div>
   </div>
 
-  <!-- Right: Stats + Messages -->
+  <!-- Right -->
   <div class="right-col">
     <!-- Stats -->
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card">
-        <div class="stat-label">Total Messages</div>
-        <div class="stat-value" id="statTotal">—</div>
-        <div class="stat-sub" id="statTotalSub">All time</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Last 24h</div>
-        <div class="stat-value" id="stat24h">—</div>
-        <div class="stat-sub">Messages today</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Unread</div>
-        <div class="stat-value" id="statUnread">—</div>
-        <div class="stat-sub">Unread inbox</div>
-      </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total Messages</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">All time</div></div>
+      <div class="stat-card"><div class="stat-label">Last 24h</div><div class="stat-value" id="stat24h">—</div><div class="stat-sub">Messages today</div></div>
+      <div class="stat-card"><div class="stat-label">Unread</div><div class="stat-value" id="statUnread">—</div><div class="stat-sub">Inbox unread</div></div>
     </div>
 
-    <!-- Message Timeline -->
+    <!-- Timeline -->
     <div class="panel">
       <div class="panel-header">
-        <span class="panel-title">Recent Messages</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="sort-btn" id="sortBtn" onclick="toggleSort()" title="切换排序方式">By priority</button>
-          <span class="panel-title" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px" id="msgCount"></span>
-        </div>
+        <span class="panel-title">Activity · last 24h</span>
+        <span class="panel-title" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px" id="timelineLabel"></span>
       </div>
-      <div id="messageList">
-        <div class="loading"><div class="spinner"></div>Loading messages…</div>
+      <div class="panel-body"><div id="timelineChart"><div class="loading"><div class="spinner"></div></div></div></div>
+    </div>
+
+    <!-- Messages -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="tabs" id="viewTabs">
+          <button class="tab active" data-view="inbox" onclick="switchView('inbox')">Inbox</button>
+          <button class="tab" data-view="public" onclick="switchView('public')">Public</button>
+          <button class="tab" data-view="sent" onclick="switchView('sent')">Sent</button>
+        </div>
+        <button class="btn-small" id="sortBtn" onclick="toggleSort()" title="切换排序方式">By priority</button>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" id="searchInput" placeholder="🔍 搜索 subject / body" oninput="onFilterChange()">
+        <select class="filter-select" id="fromFilter" onchange="onFilterChange()"><option value="">所有人</option></select>
+        <label class="toggle"><input type="checkbox" id="unreadToggle" onchange="onFilterChange()"> 未读</label>
+        <span id="msgCount" style="color:var(--text-muted);font-size:11px;margin-left:auto"></span>
+        <button class="btn-small" onclick="markAllRead()" title="标记 Inbox 全部已读">全部已读</button>
+      </div>
+      <div id="messageList"><div class="loading"><div class="spinner"></div>Loading messages…</div></div>
+    </div>
+
+    <!-- Compose -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Compose · as echo</span>
+        <button class="btn-small" id="composeToggleBtn" onclick="toggleCompose()">展开 ✎</button>
+      </div>
+      <div class="compose-body" id="composeBody" style="display:none">
+        <div class="compose-row">
+          <select id="composeTo" style="flex:2">
+            <option value="__broadcast">📢 Broadcast (全员)</option>
+            <option value="__public">🌐 Public (公共频道)</option>
+          </select>
+          <select id="composePrio" style="flex:1">
+            <option value="0">P0 普通</option>
+            <option value="1">P1</option>
+            <option value="2">P2 紧急</option>
+          </select>
+        </div>
+        <input id="composeSubject" placeholder="Subject">
+        <textarea id="composeBodyTxt" placeholder="Body (纯文本)…"></textarea>
+        <div style="display:flex;justify-content:flex-end"><button class="btn-small btn-primary" onclick="sendMessage()">发送 →</button></div>
       </div>
     </div>
   </div>
@@ -467,13 +310,10 @@
 
 <script>
 // ── Config ────────────────────────────────────────────────
-// When served from AgentBus (same origin), use empty base for relative URLs.
-// When opened standalone, fall back to the HK server address.
 const AB_BASE    = window.location.port === '7700' ? '' : 'http://43.132.211.23:7700';
 const AB_KEY     = 'ab_85fa538dd01a49b3b189337a';
 const REFRESH_MS = 30000;
 
-// Agent display metadata (location label per known agent name)
 const AGENT_META = {
   'echo':                { location: 'Mac mini · Tank desk' },
   'claude-code-hk':      { location: 'HK Server · 43.132.211.23' },
@@ -481,58 +321,47 @@ const AGENT_META = {
   'claude-code-macmini': { location: 'Mac mini M4 · Tank local' },
   'codex-macmini':       { location: 'Mac mini M4 · Tank local' },
 };
-
-// Runtime map: agent_id → name (built from /agents response)
 let AGENT_NAMES = {};
+let _allAgents  = [];
 
-// ── Helpers ───────────────────────────────────────────────
-// Try direct fetch first; if CORS blocks, retry through a header-forwarding proxy
-const CORS_PROXIES = [
-  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-];
+// ── State ─────────────────────────────────────────────────
+let _allMessages    = [];
+let _view           = 'inbox';      // inbox | public | sent
+let _sortMode       = 'priority';   // priority | time
+let _search         = '';
+let _fromFilter     = '';
+let _unreadOnly     = false;
+let _expandedMsgs   = new Set();
+let _expandedAgents = new Set();
+let _lastRefresh    = null;
+let _timeline       = [];
+
+// ── API helper ────────────────────────────────────────────
+const CORS_PROXIES = [ u => `https://corsproxy.io/?url=${encodeURIComponent(u)}` ];
 let _directFailed = false;
-
 async function api(path) {
   const directUrl = `${AB_BASE}${path}`;
-
-  // Attempt 1: direct fetch (works if served from same origin or API adds CORS headers)
   if (!_directFailed) {
     try {
-      const res = await fetch(directUrl, {
-        headers: { 'X-API-Key': AB_KEY },
-        mode: 'cors',
-      });
+      const res = await fetch(directUrl, { headers: { 'X-API-Key': AB_KEY }, mode: 'cors' });
       if (res.ok) return res.json();
-    } catch {
-      _directFailed = true;
-    }
+    } catch { _directFailed = true; }
   }
-
-  // Attempt 2: through CORS proxy — embed key as header via X-Forwarded
-  // corsproxy.io forwards all request headers
   for (const proxyFn of CORS_PROXIES) {
     try {
-      const res = await fetch(proxyFn(directUrl), {
-        headers: { 'X-API-Key': AB_KEY, 'X-Requested-With': 'XMLHttpRequest' },
-      });
+      const res = await fetch(proxyFn(directUrl), { headers: { 'X-API-Key': AB_KEY, 'X-Requested-With': 'XMLHttpRequest' } });
       if (res.ok) return res.json();
-    } catch { /* try next */ }
+    } catch { /* next */ }
   }
-
-  throw new Error(
-    `Cannot reach AgentBus API. If opening this file directly, the API server ` +
-    `needs CORS headers, or serve this dashboard behind a reverse proxy.`
-  );
+  throw new Error('Cannot reach AgentBus API');
 }
 
-// Timestamps from the API are Unix epoch floats (seconds) — convert to ms
+// ── Helpers ───────────────────────────────────────────────
 function tsToDate(ts) {
   if (!ts) return null;
-  // If it's already a string with '-' (ISO), parse directly; otherwise treat as epoch seconds
   if (typeof ts === 'string' && ts.includes('-')) return new Date(ts);
   return new Date(ts * 1000);
 }
-
 function timeAgo(ts) {
   const d = tsToDate(ts);
   if (!d) return 'never';
@@ -543,7 +372,6 @@ function timeAgo(ts) {
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
   return `${Math.floor(sec / 86400)}d ago`;
 }
-
 function getStatus(ts) {
   const d = tsToDate(ts);
   if (!d) return { label: 'dead', cls: 'dead' };
@@ -552,7 +380,6 @@ function getStatus(ts) {
   if (mins < 90) return { label: 'stale',  cls: 'stale'  };
   return { label: 'dead', cls: 'dead' };
 }
-
 function formatTime(ts) {
   const d = tsToDate(ts);
   if (!d) return '';
@@ -560,106 +387,107 @@ function formatTime(ts) {
   const isToday = d.toDateString() === now.toDateString();
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
-  if (isToday) return `${hh}:${mm}`;
-  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+  return isToday ? `${hh}:${mm}` : `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
-
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   const div = document.createElement('div');
   div.textContent = String(s);
   return div.innerHTML;
 }
-
-function agentName(id) {
-  return AGENT_NAMES[id] || id || '?';
+function agentName(id) { return AGENT_NAMES[id] || id || '?'; }
+function channelLabel(ch) {
+  if (ch === 'broadcast') return '📢 broadcast';
+  if (ch === 'public')    return '🌐 public';
+  return null;
 }
 
-// ── Render: Clock ─────────────────────────────────────────
+// ── Render: Clock + refresh label ─────────────────────────
 function updateClock() {
   const d = new Date();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const ss = String(d.getSeconds()).padStart(2, '0');
-  document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+  document.getElementById('clock').textContent =
+    `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 }
-setInterval(updateClock, 1000);
-updateClock();
+function updateRefreshLabel() {
+  const el = document.getElementById('lastUpdate');
+  if (!el || !_lastRefresh) return;
+  const sec = Math.max(0, Math.floor((Date.now() - _lastRefresh) / 1000));
+  el.textContent = sec < 60 ? `updated ${sec}s ago` : `updated ${Math.floor(sec / 60)}m ago`;
+}
 
-// ── Render: Agents ────────────────────────────────────────
+// ── Render: Agents (click to expand capabilities) ─────────
 function renderAgents(agents) {
+  _allAgents = agents || [];
+  renderComposeTo(_allAgents);
   const container = document.getElementById('agentList');
-  if (!agents || agents.length === 0) {
-    container.innerHTML = '<div class="empty">No agents registered</div>';
-    return;
-  }
+  if (!_allAgents.length) { container.innerHTML = '<div class="empty">No agents registered</div>'; return; }
 
-  // Sort: active first, then stale, then dead
   const order = { active: 0, stale: 1, dead: 2 };
-  const sorted = [...agents].sort((a, b) => {
-    const sa = getStatus(a.last_seen).cls;
-    const sb = getStatus(b.last_seen).cls;
-    return order[sa] - order[sb];
-  });
+  const sorted = [..._allAgents].sort((a, b) =>
+    order[getStatus(a.last_seen).cls] - order[getStatus(b.last_seen).cls] || a.name.localeCompare(b.name));
 
   container.innerHTML = sorted.map(a => {
-    const name   = a.name || a.id || 'unknown';
-    const meta   = AGENT_META[name] || {};
     const status = getStatus(a.last_seen);
+    const meta = AGENT_META[a.name] || {};
+    const expanded = _expandedAgents.has(a.id);
+    let caps = [];
+    try { caps = JSON.parse(a.capabilities || '[]'); } catch { caps = []; }
+    const detail = expanded ? `
+      <div class="agent-detail">
+        ${a.description ? `<div class="agent-desc">${escapeHtml(a.description)}</div>` : ''}
+        ${caps.length
+          ? `<div class="agent-caps">${caps.map(c => `<span class="cap-tag">${escapeHtml(c)}</span>`).join('')}</div>`
+          : `<div class="agent-desc" style="color:var(--text-muted)">no capabilities declared</div>`}
+      </div>` : '';
     return `
-      <div class="agent-card">
+      <div class="agent-card ${expanded ? 'expanded' : ''}" onclick="toggleAgent('${a.id}')">
         <div class="agent-card-top">
           <div class="status-dot ${status.cls}"></div>
-          <div class="agent-name">${escapeHtml(name)}</div>
+          <div class="agent-name">${escapeHtml(a.name)}</div>
           <div class="agent-badge ${status.cls}">${status.label}</div>
         </div>
         <div class="agent-meta">
-          <div class="agent-location">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            ${escapeHtml(meta.location || a.description || '—')}
-          </div>
+          <div class="agent-location">${escapeHtml(meta.location || '')}</div>
           <div class="agent-last-seen">${timeAgo(a.last_seen)}</div>
+          ${detail}
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
+}
+function toggleAgent(id) {
+  if (_expandedAgents.has(id)) _expandedAgents.delete(id); else _expandedAgents.add(id);
+  renderAgents(_allAgents);
 }
 
 // ── Render: Stats ─────────────────────────────────────────
 function renderStats(metrics) {
-  let total  = '—', count24 = '—', unread = '—';
-
+  let total = '—', count24 = '—', unread = '—';
   if (metrics) {
     const m = metrics.messages || metrics;
-    total   = m.total       ?? m.total_messages ?? '—';
-    count24 = m.last_24h    ?? m.messages_24h   ?? '—';
-    unread  = m.unread_total ?? m.unread        ?? 0;
+    total   = m.total        ?? m.total_messages ?? '—';
+    count24 = m.last_24h     ?? m.messages_24h   ?? '—';
+    unread  = m.unread_total ?? m.unread         ?? 0;
   }
-
   document.getElementById('statTotal').textContent  = total;
   document.getElementById('stat24h').textContent    = count24;
   document.getElementById('statUnread').textContent = unread;
 }
 
-// ── Render: Messages ──────────────────────────────────────
+// ── Render: Messages (body expand + priority + state kept) ─
 function renderMessages(messages) {
   const container = document.getElementById('messageList');
   const countEl   = document.getElementById('msgCount');
   if (!messages || messages.length === 0) {
-    container.innerHTML = '<div class="empty">No recent messages</div>';
+    container.innerHTML = '<div class="empty">No messages</div>';
     countEl.textContent = '';
     return;
   }
-
   countEl.textContent = `${messages.length} shown`;
-
   container.innerHTML = '<div class="message-list">' + messages.map(m => {
     const from   = m.from_name || agentName(m.from_id);
-    const toTxt  = m.channel === 'broadcast' ? '📢 broadcast'
-                 : m.channel === 'public'    ? '🌐 public'
-                 : agentName(m.to_id);
+    const chLab  = channelLabel(m.channel);
+    const to     = chLab || m.to_name || agentName(m.to_id) || '?';
     const subj   = m.subject || '(no subject)';
-    const time   = formatTime(m.created_at);
     const unread = !m.read_at;
     const prio   = m.priority || 0;
     const prioTag = prio === 2 ? '<span class="prio-tag prio-2">P2</span>'
@@ -669,49 +497,39 @@ function renderMessages(messages) {
                  : unread     ? '<div class="msg-read"></div>'
                  :              '<div class="msg-line"></div>';
     const bodyHtml = m.body ? `<div class="msg-body">${escapeHtml(m.body)}</div>` : '';
-
+    const expanded = _expandedMsgs.has(m.id) ? 'expanded' : '';
     return `
-      <div class="message-item" onclick="toggleMsg(this)">
+      <div class="message-item ${expanded}" onclick="toggleMsg(this, '${m.id}')">
         ${marker}
         <div class="msg-content">
           <div class="msg-route">
             <span class="msg-from">${escapeHtml(from)}</span>
             <span class="msg-arrow">→</span>
-            <span class="msg-to">${escapeHtml(toTxt)}</span>
+            <span class="msg-to">${escapeHtml(to)}</span>
             ${prioTag}
-            <span class="msg-time">${time}</span>
+            <span class="msg-time">${formatTime(m.created_at)}</span>
           </div>
           <div class="msg-subject">${escapeHtml(subj)}</div>
           ${bodyHtml}
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('') + '</div>';
 }
-
-// 展开/收起消息正文
-function toggleMsg(el) {
+function toggleMsg(el, id) {
   el.classList.toggle('expanded');
+  if (el.classList.contains('expanded')) _expandedMsgs.add(id); else _expandedMsgs.delete(id);
 }
 
-// ── Error Handling ────────────────────────────────────────
-function showError(msg) {
-  const el = document.getElementById('errorBanner');
-  el.textContent = `⚠ ${msg}`;
-  el.classList.add('visible');
-}
-function clearError() {
-  document.getElementById('errorBanner').classList.remove('visible');
-}
-
-// ── Main Data Fetch ───────────────────────────────────────
-// ── State: 消息缓存 / 排序 / 刷新时间 ─────────────────────
-let _allMessages = [];
-let _sortMode    = 'priority';   // 'priority' | 'time'
-let _lastRefresh = null;
-
-function sortMessages(list) {
-  const arr = [...list];
+// ── Filter + Sort ─────────────────────────────────────────
+function applyFilters() {
+  let arr = _allMessages;
+  if (_search) {
+    const q = _search.toLowerCase();
+    arr = arr.filter(m => `${m.subject || ''} ${m.body || ''}`.toLowerCase().includes(q));
+  }
+  if (_fromFilter) arr = arr.filter(m => (m.from_name || agentName(m.from_id)) === _fromFilter);
+  if (_unreadOnly) arr = arr.filter(m => !m.read_at);
+  arr = [...arr];
   if (_sortMode === 'time') {
     arr.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
   } else {
@@ -719,59 +537,141 @@ function sortMessages(list) {
   }
   return arr;
 }
-
+function onFilterChange() {
+  _search     = document.getElementById('searchInput').value.trim();
+  _fromFilter = document.getElementById('fromFilter').value;
+  _unreadOnly = document.getElementById('unreadToggle').checked;
+  renderMessages(applyFilters());
+}
+function renderFromFilter() {
+  const sel = document.getElementById('fromFilter');
+  const senders = [...new Set(_allMessages.map(m => m.from_name || agentName(m.from_id)).filter(Boolean))].sort();
+  const cur = _fromFilter;
+  sel.innerHTML = `<option value="">所有人</option>` +
+    senders.map(s => `<option value="${escapeHtml(s)}"${s === cur ? ' selected' : ''}>${escapeHtml(s)}</option>`).join('');
+}
 function toggleSort() {
   _sortMode = _sortMode === 'priority' ? 'time' : 'priority';
   document.getElementById('sortBtn').textContent = _sortMode === 'priority' ? 'By priority' : 'By time';
-  if (_allMessages.length) renderMessages(sortMessages(_allMessages));
+  renderMessages(applyFilters());
+}
+function switchView(v) {
+  _view = v;
+  document.querySelectorAll('#viewTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  _expandedMsgs.clear();
+  refresh();
 }
 
-function updateRefreshLabel() {
-  const el = document.getElementById('lastUpdate');
-  if (!el || !_lastRefresh) return;
-  const sec = Math.max(0, Math.floor((Date.now() - _lastRefresh) / 1000));
-  el.textContent = sec < 60 ? `updated ${sec}s ago` : `updated ${Math.floor(sec / 60)}m ago`;
+// ── Mark all read ─────────────────────────────────────────
+async function markAllRead() {
+  try {
+    const res = await fetch(`${AB_BASE}/messages/read-all`, { method: 'POST', headers: { 'X-API-Key': AB_KEY } });
+    const d = await res.json();
+    clearError();
+    refresh();
+  } catch (e) { showError('标记已读失败'); }
 }
 
+// ── Timeline (24h SVG) ────────────────────────────────────
+async function loadTimeline() {
+  try {
+    const d = await api('/stats/timeline');
+    _timeline = d.timeline || [];
+    document.getElementById('timelineLabel').textContent = `${d.total_24h ?? ''} msgs`;
+    renderTimeline();
+  } catch { /* silent */ }
+}
+function renderTimeline() {
+  const el = document.getElementById('timelineChart');
+  if (!_timeline.length) { el.innerHTML = '<div class="empty">No activity</div>'; return; }
+  const max = Math.max(1, ..._timeline.map(b => b.count));
+  const W = 100, H = 40;
+  const bw = W / _timeline.length;
+  const bars = _timeline.map((b, i) => {
+    const h = (b.count / max) * (H - 2);
+    const hr = new Date(b.hour * 1000).getHours();
+    return `<rect x="${(i * bw + 0.2).toFixed(2)}" y="${(H - h).toFixed(2)}" width="${(bw - 0.4).toFixed(2)}" height="${h.toFixed(2)}" rx="0.4" fill="var(--accent)" opacity="${b.count > 0 ? 0.9 : 0.18}"><title>${hr}:00 — ${b.count} msg</title></rect>`;
+  }).join('');
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`;
+}
+
+// ── Compose ───────────────────────────────────────────────
+function toggleCompose() {
+  const b = document.getElementById('composeBody');
+  const open = b.style.display === 'none';
+  b.style.display = open ? 'flex' : 'none';
+  document.getElementById('composeToggleBtn').textContent = open ? '收起' : '展开 ✎';
+}
+function renderComposeTo(agents) {
+  const sel = document.getElementById('composeTo');
+  const cur = sel.value;
+  const opts = agents.map(a => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`).join('');
+  sel.innerHTML = `<option value="__broadcast">📢 Broadcast (全员)</option><option value="__public">🌐 Public (公共频道)</option>${opts}`;
+  if (cur) sel.value = cur;
+}
+async function sendMessage() {
+  const toVal   = document.getElementById('composeTo').value;
+  const subject = document.getElementById('composeSubject').value.trim();
+  const body    = document.getElementById('composeBodyTxt').value.trim();
+  const priority = parseInt(document.getElementById('composePrio').value, 10);
+  if (!subject) { showError('Subject 不能为空'); return; }
+  const payload = { subject, body, priority };
+  if (toVal === '__broadcast') payload.channel = 'broadcast';
+  else if (toVal === '__public') payload.channel = 'public';
+  else payload.to = toVal;
+  try {
+    const res = await fetch(`${AB_BASE}/messages`, {
+      method: 'POST',
+      headers: { 'X-API-Key': AB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    document.getElementById('composeSubject').value = '';
+    document.getElementById('composeBodyTxt').value = '';
+    clearError();
+    switchView('sent');
+  } catch (e) { showError(`发送失败: ${e.message}`); }
+}
+
+// ── Error ─────────────────────────────────────────────────
+function showError(msg) { const el = document.getElementById('errorBanner'); el.textContent = `⚠ ${msg}`; el.classList.add('visible'); }
+function clearError() { document.getElementById('errorBanner').classList.remove('visible'); }
+
+// ── Main refresh ──────────────────────────────────────────
 async function refresh() {
   try {
-    const [agentsData, metricsData, inboxData] = await Promise.all([
-      api('/agents'),
-      api('/metrics'),
-      api('/messages/inbox?limit=20'),
-    ]);
-
+    const ep = _view === 'inbox' ? '/messages/inbox?limit=50'
+             : _view === 'public' ? '/messages/public?limit=50'
+             :                      '/messages/sent?limit=50';
+    const [agentsData, metricsData, msgData] = await Promise.all([api('/agents'), api('/metrics'), api(ep)]);
     clearError();
 
-    // Build agent ID → name map
     const agents = agentsData.agents || agentsData.data || (Array.isArray(agentsData) ? agentsData : []);
     AGENT_NAMES = {};
     agents.forEach(a => { AGENT_NAMES[a.id] = a.name; });
 
-    // Render agents
     renderAgents(agents);
-
-    // Render stats
     renderStats(metricsData);
 
-    // Render messages — 缓存后按当前排序渲染
-    const messages = inboxData.messages || inboxData.data || (Array.isArray(inboxData) ? inboxData : []);
-    _allMessages = messages;
-    renderMessages(sortMessages(_allMessages));
+    _allMessages = msgData.messages || msgData.data || (Array.isArray(msgData) ? msgData : []);
+    renderFromFilter();
+    renderMessages(applyFilters());
 
-    // 记录刷新时间
     _lastRefresh = Date.now();
     updateRefreshLabel();
-
   } catch (err) {
     showError(`Failed to fetch: ${err.message}`);
   }
 }
 
 // ── Init ──────────────────────────────────────────────────
+updateClock();
 refresh();
+loadTimeline();
+setInterval(updateClock, 1000);
+setInterval(updateRefreshLabel, 1000);
 setInterval(refresh, REFRESH_MS);
-setInterval(updateRefreshLabel, 1000);   // 每秒更新"上次刷新"
+setInterval(loadTimeline, 60000);
 </script>
 
 </body>
