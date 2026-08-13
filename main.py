@@ -559,6 +559,36 @@ def get_stats(agent: dict = Depends(resolve_agent)):
         "my_unread": my_unread,
     }
 
+@app.get("/metrics")
+def get_metrics(agent: dict = Depends(resolve_agent)):
+    """Dashboard 指标端点 — 供 /dashboard 前端 renderStats 消费。
+
+    返回字段对齐 index.html 的 renderStats() 期望: total / last_24h / unread_total。
+    之前 dashboard 调 /metrics 但后端无此端点 → 404 → Promise.all 整体失败 →
+    前端抛出含 "CORS headers" 字样的错误, 被误判为跨域问题 (实为端点缺失)。
+    """
+    cutoff = time.time() - 86400  # 24h ago (messages.created_at 是 Unix epoch 秒)
+    with get_db() as conn:
+        total = conn.execute("SELECT COUNT(*) AS c FROM messages").fetchone()["c"]
+        last_24h = conn.execute(
+            "SELECT COUNT(*) AS c FROM messages WHERE created_at >= ?", (cutoff,)
+        ).fetchone()["c"]
+        unread_total = conn.execute(
+            """SELECT COUNT(*) AS c FROM messages
+               WHERE (to_id = ? OR channel = 'broadcast')
+                 AND from_id != ?
+                 AND (
+                     read_by IS NULL OR read_by = '[]'
+                     OR json_extract(read_by, '$') NOT LIKE ?
+                 )""",
+            (agent["id"], agent["id"], f'%"{agent["id"]}"%'),
+        ).fetchone()["c"]
+    return {
+        "total": total,
+        "last_24h": last_24h,
+        "unread_total": unread_total,
+    }
+
 # ── Task Models ─────────────────────────────────────────
 class TaskCreate(BaseModel):
     title: str
