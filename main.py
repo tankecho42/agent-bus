@@ -183,6 +183,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount dashboard as static files at /dashboard — same origin, no CORS issues
+from fastapi.staticfiles import StaticFiles
+_dashboard_dir = os.path.join(os.path.dirname(__file__), "dashboard")
+if os.path.isdir(_dashboard_dir):
+    app.mount("/dashboard", StaticFiles(directory=_dashboard_dir, html=True), name="dashboard")
+
 @app.get("/health")
 def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}

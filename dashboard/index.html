@@ -436,7 +436,9 @@
 
 <script>
 // ── Config ────────────────────────────────────────────────
-const AB_BASE    = 'http://43.132.211.23:7700';
+// When served from AgentBus (same origin), use empty base for relative URLs.
+// When opened standalone, fall back to the HK server address.
+const AB_BASE    = window.location.port === '7700' ? '' : 'http://43.132.211.23:7700';
 const AB_KEY     = 'ab_85fa538dd01a49b3b189337a';
 const REFRESH_MS = 30000;
 
