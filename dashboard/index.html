@@ -130,9 +130,40 @@
   .stat-value { font-size: 30px; font-weight: 700; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
   .stat-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
 
-  /* ── Timeline ────────────────────────────────────────── */
-  #timelineChart { width: 100%; }
-  #timelineChart svg { display: block; width: 100%; height: 56px; }
+  /* ── Scope bar ───────────────────────────────────────── */
+  .scope-bar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+  .scope-bar .scope-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted); }
+  .scope-bar select { font-size:12px; font-family:var(--font); color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:5px 10px; outline:none; }
+  .scope-bar select:focus { border-color:var(--accent); }
+  .scope-total { margin-left:auto; font-size:11px; color:var(--text-secondary); font-family:var(--mono); }
+
+  /* ── Range toggle (segmented) ────────────────────────── */
+  .range-toggle { display:flex; background:var(--bg); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .range-toggle button { font-size:11px; font-family:var(--font); color:var(--text-muted); background:transparent; border:none; padding:5px 12px; cursor:pointer; transition:all .15s; }
+  .range-toggle button:hover { color:var(--text); }
+  .range-toggle button.active { background:var(--accent); color:#fff; }
+
+  /* ── Volume chart ────────────────────────────────────── */
+  .vol-bars { display:flex; align-items:flex-end; gap:2px; height:130px; }
+  .vol-bar { flex:1; min-width:2px; background:var(--accent); border-radius:2px 2px 0 0; opacity:.85; transition:height .25s ease; }
+  .vol-bar.zero { opacity:.12; }
+  .vol-bar:hover { opacity:1; }
+  .vol-labels { display:flex; gap:2px; margin-top:7px; }
+  .vol-label { flex:1; text-align:center; font-size:9px; font-family:var(--mono); color:var(--text-muted); min-width:0; overflow:hidden; }
+
+  /* ── Heatmap (GitHub-style, Mon→Sun columns) ─────────── */
+  .hm-grid { display:inline-grid; grid-template-columns:34px repeat(7, 15px); gap:4px; }
+  .hm-dow { font-size:9px; color:var(--text-muted); text-align:center; line-height:15px; }
+  .hm-wlabel { font-size:9px; color:var(--text-muted); font-family:var(--mono); text-align:right; padding-right:3px; line-height:15px; white-space:nowrap; }
+  .hm-cell { width:15px; height:15px; border-radius:3px; background:#161618; }
+  .hm-cell.l1 { background:rgba(61,214,140,0.28); }
+  .hm-cell.l2 { background:rgba(61,214,140,0.5); }
+  .hm-cell.l3 { background:rgba(61,214,140,0.72); }
+  .hm-cell.l4 { background:var(--green); }
+  .hm-cell.out { background:transparent; }
+  .hm-cell.future { opacity:.3; }
+  .hm-legend { display:flex; align-items:center; gap:5px; margin-top:14px; font-size:10px; color:var(--text-muted); }
+  .hm-legend .hm-cell { width:11px; height:11px; }
 
   /* ── Tabs ────────────────────────────────────────────── */
   .tabs { display: flex; gap: 2px; }
@@ -247,13 +278,39 @@
       <div class="stat-card"><div class="stat-label">Unread</div><div class="stat-value" id="statUnread">—</div><div class="stat-sub">Inbox unread</div></div>
     </div>
 
-    <!-- Timeline -->
+    <!-- Scope + charts (视角切换驱动下方两张图) -->
+    <div class="scope-bar">
+      <span class="scope-label">视角</span>
+      <select id="scopeAgent" onchange="setScope(this.value)"><option value="">全部 Agents</option></select>
+      <span class="scope-total" id="scopeTotal"></span>
+    </div>
+
+    <!-- Volume chart (时间维度, 24h/7d/30d) -->
     <div class="panel">
       <div class="panel-header">
-        <span class="panel-title">Activity · last 24h</span>
-        <span class="panel-title" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px" id="timelineLabel"></span>
+        <span class="panel-title">消息量趋势</span>
+        <div class="range-toggle" id="rangeToggle">
+          <button data-range="24h" class="active" onclick="setRange('24h')">24 小时</button>
+          <button data-range="7d" onclick="setRange('7d')">7 天</button>
+          <button data-range="30d" onclick="setRange('30d')">30 天</button>
+        </div>
       </div>
-      <div class="panel-body"><div id="timelineChart"><div class="loading"><div class="spinner"></div></div></div></div>
+      <div class="panel-body"><div id="volumeChart"><div class="loading"><div class="spinner"></div></div></div></div>
+    </div>
+
+    <!-- Heatmap (GitHub 风格, 周一→周日) -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">活跃热力图</span>
+        <span class="panel-title" id="heatmapMeta" style="color:var(--text-secondary);text-transform:none;letter-spacing:0;font-weight:500;font-size:11px"></span>
+      </div>
+      <div class="panel-body">
+        <div id="heatmap"><div class="loading"><div class="spinner"></div></div></div>
+        <div class="hm-legend">少
+          <span class="hm-cell l0"></span><span class="hm-cell l1"></span><span class="hm-cell l2"></span><span class="hm-cell l3"></span><span class="hm-cell l4"></span>
+          多
+        </div>
+      </div>
     </div>
 
     <!-- Messages -->
@@ -303,7 +360,9 @@ let _unreadOnly     = false;
 let _expandedMsgs   = new Set();
 let _expandedAgents = new Set();
 let _lastRefresh    = null;
-let _timeline       = [];
+let _range          = '24h';      // 24h | 7d | 30d
+let _scope          = '';         // '' = 全部 agents; 否则 = agent name
+const _tz           = -new Date().getTimezoneOffset() / 60;   // 浏览器时区小时偏移, 传后端切天/切小时
 
 // ── API helper ────────────────────────────────────────────
 const CORS_PROXIES = [ u => `https://corsproxy.io/?url=${encodeURIComponent(u)}` ];
@@ -530,28 +589,79 @@ function switchView(v) {
   refresh();
 }
 
-// ── Timeline (24h SVG) ────────────────────────────────────
-async function loadTimeline() {
+// ── Activity: volume chart + heatmap (driven by _range + _scope) ─
+async function loadActivity() {
+  const params = new URLSearchParams({ range: _range, tz: _tz });
+  if (_scope) params.set('agent', _scope);
   try {
-    const d = await api('/stats/timeline');
-    _timeline = d.timeline || [];
-    document.getElementById('timelineLabel').textContent = `${d.total_24h ?? ''} msgs`;
-    renderTimeline();
-  } catch { /* silent */ }
+    const d = await api('/stats/activity?' + params.toString());
+    renderVolume(d);
+    renderHeatmap(d);
+    clearError();
+  } catch { /* keep last render */ }
 }
-function renderTimeline() {
-  const el = document.getElementById('timelineChart');
-  if (!_timeline.length) { el.innerHTML = '<div class="empty">No activity</div>'; return; }
-  const max = Math.max(1, ..._timeline.map(b => b.count));
-  const W = 100, H = 40;
-  const bw = W / _timeline.length;
-  const bars = _timeline.map((b, i) => {
-    const h = (b.count / max) * (H - 2);
-    const hr = new Date(b.hour * 1000).getHours();
-    return `<rect x="${(i * bw + 0.2).toFixed(2)}" y="${(H - h).toFixed(2)}" width="${(bw - 0.4).toFixed(2)}" height="${h.toFixed(2)}" rx="0.4" fill="var(--accent)" opacity="${b.count > 0 ? 0.9 : 0.18}"><title>${hr}:00 — ${b.count} msg</title></rect>`;
-  }).join('');
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`;
+function renderVolume(d) {
+  const el = document.getElementById('volumeChart');
+  const vol = (d && d.volume) || [];
+  const peak = vol.length ? Math.max(...vol.map(v => v.count)) : 0;
+  const st = document.getElementById('scopeTotal');
+  if (st) st.textContent = d ? `${d.total} 条 · 峰值 ${peak}` : '';
+  if (!vol.length) { el.innerHTML = '<div class="empty">No data</div>'; return; }
+  const max = Math.max(1, peak);
+  const every = Math.max(1, Math.ceil(vol.length / 7));
+  el.innerHTML =
+    `<div class="vol-bars">` + vol.map(v =>
+      `<div class="vol-bar ${v.count ? '' : 'zero'}" style="height:${(v.count / max * 100).toFixed(1)}%" title="${escapeHtml(v.label)}: ${v.count}"></div>`
+    ).join('') + `</div>` +
+    `<div class="vol-labels">` + vol.map((v, i) =>
+      `<div class="vol-label">${i % every === 0 ? escapeHtml(v.label) : ''}</div>`
+    ).join('') + `</div>`;
 }
+function renderHeatmap(d) {
+  const el = document.getElementById('heatmap');
+  const meta = document.getElementById('heatmapMeta');
+  const cells = (d && d.heatmap && d.heatmap.cells) || [];
+  if (!cells.length) { el.innerHTML = '<div class="empty">No activity</div>'; if (meta) meta.textContent = ''; return; }
+  const max = Math.max(1, ...cells.map(c => c.count));
+  const byDate = {}; cells.forEach(c => byDate[c.date] = c);
+  const firstTs = cells[0].ts, lastTs = cells[cells.length - 1].ts;
+  const gridStart = firstTs - cells[0].dow * 86400;        // 对齐到本周一
+  const weeks = Math.ceil(((lastTs - gridStart) / 86400 + 1) / 7);
+  const dowNames = ['一', '二', '三', '四', '五', '六', '日'];
+  const fmtDate = ts => { const dt = new Date(ts * 1000); return `${dt.getMonth() + 1}/${dt.getDate()}`; };
+  const dateStr = ts => { const dt = new Date(ts * 1000); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; };
+  const nowSec = Date.now() / 1000;
+  let html = `<div class="hm-grid"><div></div>` + dowNames.map(n => `<div class="hm-dow">${n}</div>`).join('');
+  for (let w = 0; w < weeks; w++) {
+    const mondayTs = gridStart + w * 7 * 86400;
+    html += `<div class="hm-wlabel">${fmtDate(mondayTs)}</div>`;
+    for (let dd = 0; dd < 7; dd++) {
+      const ts = mondayTs + dd * 86400;
+      const c = byDate[dateStr(ts)];
+      if (!c) { html += `<div class="hm-cell out"></div>`; continue; }
+      const lvl = c.count === 0 ? 0 : Math.min(4, Math.ceil(c.count / max * 4));
+      const future = ts > nowSec ? ' future' : '';
+      html += `<div class="hm-cell l${lvl}${future}" title="${c.date} (周${dowNames[c.dow]}): ${c.count} 条"></div>`;
+    }
+  }
+  el.innerHTML = html + `</div>`;
+  if (meta) meta.textContent = `最近 ${cells.length} 天`;
+}
+function renderScope(agents) {
+  const sel = document.getElementById('scopeAgent');
+  if (!sel) return;
+  if (sel.dataset.count === String(agents.length)) return;   // 已填充, 不打断选择
+  sel.innerHTML = `<option value="">全部 Agents</option>` +
+    agents.map(a => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`).join('');
+  sel.dataset.count = agents.length;
+  sel.value = _scope;
+}
+function setRange(r) {
+  _range = r;
+  document.querySelectorAll('#rangeToggle button').forEach(b => b.classList.toggle('active', b.dataset.range === r));
+  loadActivity();
+}
+function setScope(v) { _scope = v; loadActivity(); }
 
 // ── Error ─────────────────────────────────────────────────
 function showError(msg) { const el = document.getElementById('errorBanner'); el.textContent = `⚠ ${msg}`; el.classList.add('visible'); }
@@ -571,6 +681,7 @@ async function refresh() {
     agents.forEach(a => { AGENT_NAMES[a.id] = a.name; });
 
     renderAgents(agents);
+    renderScope(agents);
     renderStats(metricsData);
 
     _allMessages = msgData.messages || msgData.data || (Array.isArray(msgData) ? msgData : []);
@@ -587,11 +698,11 @@ async function refresh() {
 // ── Init ──────────────────────────────────────────────────
 updateClock();
 refresh();
-loadTimeline();
+loadActivity();
 setInterval(updateClock, 1000);
 setInterval(updateRefreshLabel, 1000);
 setInterval(refresh, REFRESH_MS);
-setInterval(loadTimeline, 60000);
+setInterval(loadActivity, 60000);
 </script>
 
 </body>

@@ -613,6 +613,118 @@ def stats_timeline(agent: dict = Depends(resolve_agent)):
     return {"timeline": timeline, "total_24h": len(rows), "bucket_size": 3600}
 
 
+@app.get("/stats/activity")
+def stats_activity(
+    rng: str = Query("24h", alias="range", description="24h | 7d | 30d"),
+    agent: Optional[str] = Query(None, description="按发件人 agent name/id 过滤; 留空=全部"),
+    tz: float = Query(8, description="查看者时区偏移(小时), 用于按本地日历切天/切小时"),
+    requester: dict = Depends(resolve_agent),
+):
+    """Dashboard 活动统计 — 时间维度柱状图 + GitHub 风格热力图。
+
+    返回:
+      - volume: 时间维度桶 (24h→每小时 24 桶, 7d/30d→每天), 供柱状图
+      - heatmap: 每天单元格 (至少 7 天; 24h 时展示最近 7 天), dow=周一0..周日6, 供 Mon-Sun 热力图
+      - total: 所选 range 内的消息数 (volume 桶之和)
+
+    所有桶按 tz 时区切分 (前端传浏览器偏移), 与服务器进程时区解耦。
+    统计口径=发送者 (from_id), 与 GitHub commit 语义一致。
+    注: URL 参数名仍为 range (Query alias), Python 变量名用 rng 以免遮蔽内置 range()。
+    """
+    now = time.time()
+    RANGES = {
+        "24h": {"span": 24 * 3600, "gran": "hour", "heat_days": 7},
+        "7d":  {"span": 7 * 86400,  "gran": "day",  "heat_days": 7},
+        "30d": {"span": 30 * 86400, "gran": "day",  "heat_days": 30},
+    }
+    cfg = RANGES.get(rng, RANGES["24h"])
+    span, gran, heat_days = cfg["span"], cfg["gran"], cfg["heat_days"]
+    off = tz * 3600  # 时区秒偏移
+
+    vol_start = now - span
+    heat_start = now - heat_days * 86400
+    fetch_start = min(vol_start, heat_start)
+
+    # 解析发件人过滤
+    agent_id, agent_name = None, None
+    if agent:
+        with get_db() as conn:
+            a = conn.execute(
+                "SELECT id, name FROM agents WHERE name = ? OR id = ?", (agent, agent)
+            ).fetchone()
+        if not a:
+            raise HTTPException(404, f"Agent '{agent}' not found")
+        agent_id, agent_name = a["id"], a["name"]
+
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT created_at, from_id FROM messages WHERE created_at >= ?", (fetch_start,)
+        ).fetchall()
+    if agent_id:
+        rows = [r for r in rows if r["from_id"] == agent_id]
+
+    def day_floor(ts):
+        local = ts + off
+        return local - (local % 86400) - off
+    def hour_floor(ts):
+        local = ts + off
+        return local - (local % 3600) - off
+    def fmt(ts, f):
+        return time.strftime(f, time.gmtime(ts + off))
+
+    # Volume series (按所选 range)
+    volume = []
+    if gran == "hour":
+        first = hour_floor(vol_start)
+        buckets = {}
+        for r in rows:
+            if r["created_at"] >= vol_start:
+                h = hour_floor(r["created_at"])
+                buckets[h] = buckets.get(h, 0) + 1
+        for i in range(24):
+            ts = first + i * 3600
+            volume.append({"ts": ts, "label": fmt(ts, "%H:%M"), "count": buckets.get(ts, 0)})
+    else:
+        buckets = {}
+        for r in rows:
+            if r["created_at"] >= vol_start:
+                d = day_floor(r["created_at"])
+                buckets[d] = buckets.get(d, 0) + 1
+        n_days = int(round(span / 86400))
+        d0 = day_floor(vol_start)
+        for i in range(n_days):
+            ts = d0 + i * 86400
+            volume.append({"ts": ts, "label": fmt(ts, "%m-%d"), "count": buckets.get(ts, 0)})
+
+    # Heatmap cells (每日, heat_days 天)
+    hbuckets = {}
+    for r in rows:
+        d = day_floor(r["created_at"])
+        hbuckets[d] = hbuckets.get(d, 0) + 1
+    cells = []
+    hd0 = day_floor(heat_start)
+    for i in range(heat_days):
+        ts = hd0 + i * 86400
+        lt = time.gmtime(ts + off)
+        cells.append({
+            "ts": ts,
+            "date": time.strftime("%Y-%m-%d", lt),
+            "dow": lt.tm_wday,   # 周一=0 .. 周日=6
+            "count": hbuckets.get(ts, 0),
+        })
+
+    return {
+        "range": rng,
+        "agent": agent_name,
+        "agent_id": agent_id,
+        "granularity": gran,
+        "volume": volume,
+        "heatmap": {"days": heat_days, "cells": cells},
+        "total": sum(v["count"] for v in volume),
+        "now": now,
+    }
+
+
 @app.post("/messages/read-all")
 def read_all_messages(agent: dict = Depends(resolve_agent)):
     """标记当前 agent 的所有未读消息为已读 (per-agent read_by, 不影响他人)。"""
